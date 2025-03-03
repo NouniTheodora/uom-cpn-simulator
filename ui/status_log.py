@@ -12,9 +12,6 @@ class StatusLog:
         self.status_text = tk.Text(self.frame, height=8, width=80, state="disabled", bg="black", fg="lime")
         self.status_text.pack(fill="both", expand=True)
 
-        self.exit_btn = tk.Button(self.frame, text="Exit", command=self.exit_app, bg="red", fg="white")
-        self.exit_btn.pack(pady=5)
-
     def update_status(self, pn):
         """Ενημερώνει το text box με την τρέχουσα κατάσταση του Petri Net"""
         self.status_text.config(state="normal")
@@ -33,8 +30,3 @@ class StatusLog:
 
         self.status_text.insert(tk.END, status_text)
         self.status_text.config(state="disabled")
-
-    def exit_app(self):
-        """Εμφανίζει μήνυμα επιβεβαίωσης και κλείνει το πρόγραμμα"""
-        if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
-            self.frame.master.quit()
