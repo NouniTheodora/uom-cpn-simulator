@@ -1,4 +1,4 @@
-# Colored Petri Net Simulator - Desktop Application
+# Simple Petri Nets Simulator - Desktop Application
 
 ## Description
 XXXXXXX
