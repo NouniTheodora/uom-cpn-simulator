@@ -20,9 +20,6 @@ class PetriNetGUI:
         self.visualization = VisualizationPanel(self.main_frame, self.pn)
         self.status_log = StatusLog(root)
 
-        self.run_full_simulation_button = tk.Button(self.main_frame, text="Run Full Simulation", command=self.run_full_simulation)
-        self.run_full_simulation_button.pack(pady=10)
-
         self.update_status()
 
     def update_status(self, message=None, step=None):

@@ -29,6 +29,12 @@ class ControlsPanel:
         self.demo_btn = tk.Button(self.frame, text="Demo Petri Net", command=self.gui.run_demo)
         self.demo_btn.pack(pady=10)
 
+        self.run_full_simulation_button = tk.Button(self.frame, text="Run Full Simulation", command=self.gui.run_full_simulation)
+        self.run_full_simulation_button.pack(pady=10)
+
+        self.demo_btn = tk.Button(self.frame, text="Reset ALL", command=self.reset)
+        self.demo_btn.pack(pady=10)
+
     def create_entry(self, parent, placeholder):
         """Create an Entry widget with placeholder functionality"""
         entry = tk.Entry(parent)
@@ -73,3 +79,6 @@ class ControlsPanel:
                 name, tokens = item.split(":")
                 places[name.strip()] = int(tokens)
         return places
+    
+    def reset(self):
+        print('I AM GOING TO RESET ALL')
