@@ -9,43 +9,44 @@ class ControlsPanel:
         tk.Label(self.frame, text="Petri Net Controls", font=("Arial", 14, "bold")).pack(pady=10)
 
         tk.Label(self.frame, text="Add Place").pack()
-        self.place_name_entry = tk.Entry(self.frame)
-        self.place_name_entry.pack(pady=2)
-        self.place_name_entry.insert(0, "Name")
-
-        self.place_tokens_entry = tk.Entry(self.frame)
-        self.place_tokens_entry.pack(pady=2)
-        self.place_tokens_entry.insert(0, "Tokens")
-
+        self.place_name_entry = self.create_entry(self.frame, "Name")
+        self.place_tokens_entry = self.create_entry(self.frame, "Tokens")
         self.add_place_btn = tk.Button(self.frame, text="Add Place", command=self.add_place)
         self.add_place_btn.pack(pady=5)
 
         tk.Label(self.frame, text="Add Transition").pack()
-        self.trans_name_entry = tk.Entry(self.frame)
-        self.trans_name_entry.pack(pady=2)
-        self.trans_name_entry.insert(0, "Name")
-
-        self.trans_inputs_entry = tk.Entry(self.frame)
-        self.trans_inputs_entry.pack(pady=2)
-        self.trans_inputs_entry.insert(0, "Inputs (P1:2,P2:1)")
-
-        self.trans_outputs_entry = tk.Entry(self.frame)
-        self.trans_outputs_entry.pack(pady=2)
-        self.trans_outputs_entry.insert(0, "Outputs (P3:1)")
-
+        self.trans_name_entry = self.create_entry(self.frame, "Name")
+        self.trans_inputs_entry = self.create_entry(self.frame, "Inputs (P1:2,P2:1)")
+        self.trans_outputs_entry = self.create_entry(self.frame, "Outputs (P3:1)")
         self.add_trans_btn = tk.Button(self.frame, text="Add Transition", command=self.add_transition)
         self.add_trans_btn.pack(pady=5)
 
         tk.Label(self.frame, text="Fire Transition").pack()
-        self.fire_trans_entry = tk.Entry(self.frame)
-        self.fire_trans_entry.pack(pady=2)
-        self.fire_trans_entry.insert(0, "Transition Name")
-
+        self.fire_trans_entry = self.create_entry(self.frame, "Transition Name")
         self.fire_trans_btn = tk.Button(self.frame, text="Fire Transition", command=self.fire_transition)
         self.fire_trans_btn.pack(pady=5)
 
         self.demo_btn = tk.Button(self.frame, text="Demo Petri Net", command=self.gui.run_demo)
         self.demo_btn.pack(pady=10)
+
+    def create_entry(self, parent, placeholder):
+        """Create an Entry widget with placeholder functionality"""
+        entry = tk.Entry(parent)
+        entry.insert(0, placeholder)  # Set placeholder text
+        entry.bind("<FocusIn>", lambda event: self.clear_placeholder(event, entry, placeholder))
+        entry.bind("<FocusOut>", lambda event: self.add_placeholder(event, entry, placeholder))
+        entry.pack(pady=2)
+        return entry
+
+    def clear_placeholder(self, event, entry, placeholder):
+        """Clear the placeholder when the field is focused"""
+        if entry.get() == placeholder:  # If placeholder is there
+            entry.delete(0, tk.END)
+
+    def add_placeholder(self, event, entry, placeholder):
+        """Add placeholder text back if the field is empty"""
+        if not entry.get():
+            entry.insert(0, placeholder)
 
     def add_place(self):
         name = self.place_name_entry.get().strip()
