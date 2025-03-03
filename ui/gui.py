@@ -4,6 +4,7 @@ from ui.visualization import VisualizationPanel
 from ui.status_log import StatusLog
 from models.petri_net import PetriNet
 from tkinter import messagebox
+import time
 
 class PetriNetGUI:
     def __init__(self, root):
@@ -14,14 +15,23 @@ class PetriNetGUI:
 
         self.main_frame = tk.Frame(root)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
         self.controls = ControlsPanel(self.main_frame, self)
         self.visualization = VisualizationPanel(self.main_frame, self.pn)
         self.status_log = StatusLog(root)
 
+        self.run_full_simulation_button = tk.Button(self.main_frame, text="Run Full Simulation", command=self.run_full_simulation)
+        self.run_full_simulation_button.pack(pady=10)
+
         self.update_status()
 
-    def update_status(self):
-        self.status_log.update_status(self.pn)
+    def update_status(self, message=None, step=None):
+        """Ενημερώνει το StatusLog με την τρέχουσα κατάσταση του Petri Net"""
+        # Αν δεν υπάρχει βήμα (όταν καλείται την πρώτη φορά), αποθηκεύουμε την αρχική κατάσταση
+        if message is not None and step is not None:
+            self.status_log.update_status(self.pn, message, step)
+        else:
+            self.status_log.update_status(self.pn)
 
     def update_preview(self):
         self.visualization.update_preview()
@@ -40,6 +50,26 @@ class PetriNetGUI:
         self.pn.fire_transition(name)
         self.update_status()
         self.update_preview()
+
+    def run_full_simulation(self):
+        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens"""
+        # Ενημέρωση για την αρχική κατάσταση
+        self.update_status()
+
+        # Εκτέλεση όλων των μεταβάσεων
+        transitions = list(self.pn.transitions.keys())  # Λαμβάνουμε όλα τα transitions
+
+        # Κίνηση των tokens με κάθε μετάβαση
+        for step, transition_name in enumerate(transitions, 1):
+            self.update_status(f"Executing Transition: {transition_name}", step)
+            self.pn.fire_transition(transition_name)  # Εκτέλεση της μετάβασης
+            self.update_preview()  # Ενημέρωση του διαγράμματος μετά από κάθε μετάβαση
+            time.sleep(1)  # Μικρή καθυστέρηση για να δείξουμε την κίνηση των tokens
+
+        # Ενημέρωση για την τελική κατάσταση
+        self.update_status()
+
+        messagebox.showinfo("Full Simulation", "Η πλήρης προσομοίωση ολοκληρώθηκε και τα tokens μετακινήθηκαν!")
 
     def run_demo(self):
         """Δημιουργεί ένα προ-ορισμένο Petri Net για δοκιμή"""

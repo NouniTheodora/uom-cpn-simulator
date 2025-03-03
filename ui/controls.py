@@ -16,8 +16,8 @@ class ControlsPanel:
 
         tk.Label(self.frame, text="Add Transition").pack()
         self.trans_name_entry = self.create_entry(self.frame, "Name")
-        self.trans_inputs_entry = self.create_entry(self.frame, "Inputs (P1:2,P2:1)")
-        self.trans_outputs_entry = self.create_entry(self.frame, "Outputs (P3:1)")
+        self.trans_inputs_entry = self.create_entry(self.frame, "f.e. P1:1,P2:1")
+        self.trans_outputs_entry = self.create_entry(self.frame, "f.e. P3:1, P4:1")
         self.add_trans_btn = tk.Button(self.frame, text="Add Transition", command=self.add_transition)
         self.add_trans_btn.pack(pady=5)
 

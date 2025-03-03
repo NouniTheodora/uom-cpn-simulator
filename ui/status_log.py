@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import messagebox
 
 class StatusLog:
     def __init__(self, parent):
@@ -12,11 +11,16 @@ class StatusLog:
         self.status_text = tk.Text(self.frame, height=8, width=80, state="disabled", bg="black", fg="lime")
         self.status_text.pack(fill="both", expand=True)
 
-    def update_status(self, pn):
+    def update_status(self, pn, message=None, step=None):
         """Ενημερώνει το text box με την τρέχουσα κατάσταση του Petri Net"""
         self.status_text.config(state="normal")
         self.status_text.delete(1.0, tk.END)
 
+        # Εμφάνιση αρχικής κατάστασης
+        if message and step:  # Αν έχουμε βήμα, θα εμφανίσουμε το μήνυμα και το βήμα
+            self.status_text.insert(tk.END, f"🔁 Step {step}: {message}\n")
+
+        # Εμφάνιση της τρέχουσας κατάστασης του Petri Net
         places_status = "\n".join([f"Place: {p.name} - Tokens: {p.tokens}" for p in pn.places.values()])
         
         transitions_status = "\n".join([
@@ -28,5 +32,6 @@ class StatusLog:
         status_text = "📌 Places:\n" + (places_status if places_status else "No Places") + "\n\n" \
                     "🔀 Transitions:\n" + (transitions_status if transitions_status else "No Transitions")
 
-        self.status_text.insert(tk.END, status_text)
+        self.status_text.insert(tk.END, status_text + "\n")
+
         self.status_text.config(state="disabled")
