@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import messagebox
 from models.petri_net import PetriNet
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class PetriNetGUI:
     def __init__(self, root):
@@ -56,6 +59,14 @@ class PetriNetGUI:
         self.fire_trans_btn = tk.Button(root, text="Εκτέλεση Transition", command=self.fire_transition)
         self.fire_trans_btn.pack(pady=5)
 
+         # --- Περιοχή Οπτικοποίησης (Mini Preview) ---
+        self.fig, self.ax = plt.subplots(figsize=(4, 3))  # Μικρό γράφημα
+        self.canvas = FigureCanvasTkAgg(self.fig, master=root)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(pady=10)
+
+        self.update_preview()  # Αρχικό κενό γράφημα
+
         # --- Εμφάνιση Κατάστασης Petri Net ---
         self.status_label = tk.Label(root, text="Κατάσταση Petri Net:", font=("Arial", 12, "bold"))
         self.status_label.pack(pady=10)
@@ -64,10 +75,6 @@ class PetriNetGUI:
         self.status_text.pack()
 
         self.update_status()  # Ενημέρωση της αρχικής κατάστασης
-
-        # --- Κουμπί για Οπτικοποίηση ---
-        self.visualize_btn = tk.Button(root, text="Οπτικοποίηση", command=self.visualize_petri_net)
-        self.visualize_btn.pack(pady=10)
 
         # --- Demo Petri Net ---
         self.demo_btn = tk.Button(root, text="Demo Petri Net", command=self.run_demo)
@@ -93,6 +100,7 @@ class PetriNetGUI:
         self.pn.add_place(name, tokens)
         messagebox.showinfo("Success", f"Προστέθηκε το Place {name} με {tokens} tokens.")
         self.update_status()
+        self.update_preview()
 
         # Καθαρισμός πεδίων
         self.place_name_entry.delete(0, tk.END)
@@ -105,11 +113,13 @@ class PetriNetGUI:
         self.pn.add_transition(name, inputs, outputs)
         messagebox.showinfo("Success", f"Προστέθηκε το Transition {name}.")
         self.update_status()
+        self.update_preview()
 
     def fire_transition(self):
         name = self.fire_trans_entry.get()
         self.pn.fire_transition(name)
         self.update_status()
+        self.update_preview()
 
     def run_demo(self):
         """Δημιουργεί ένα προ-ορισμένο Petri Net για δοκιμή"""
@@ -120,6 +130,7 @@ class PetriNetGUI:
         self.pn.fire_transition("T1")
         messagebox.showinfo("Demo", "Το Demo Petri Net εκτελέστηκε!")
         self.update_status()
+        self.update_preview()
 
     def parse_places(self, text):
         """Μετατρέπει είσοδο τύπου 'P1:2,P2:1' σε λεξικό {όνομα: tokens}"""
@@ -131,21 +142,64 @@ class PetriNetGUI:
         return places
 
     def update_status(self):
-        """Ενημερώνει το text box με την τρέχουσα κατάσταση του Petri Net"""
+        """Ενημερώνει το text box με την τρέχουσα κατάσταση του Petri Net (Places + Transitions)"""
         self.status_text.config(state="normal")
         self.status_text.delete(1.0, tk.END)
-        status = "\n".join([str(p) for p in self.pn.places.values()])
-        self.status_text.insert(tk.END, status)
-        self.status_text.config(state="disabled") 
+
+        # Εμφάνιση των Places
+        places_status = "\n".join([f"Place: {p.name} - Tokens: {p.tokens}" for p in self.pn.places.values()])
+        
+        # Εμφάνιση των Transitions
+        transitions_status = "\n".join([
+            f"Transition: {t.name} - Inputs: {', '.join(f'{p.name}({c})' for p, c in t.inputs.items())} "
+            f"→ Outputs: {', '.join(f'{p.name}({c})' for p, c in t.outputs.items())}"
+            for t in self.pn.transitions.values()
+        ])
+
+        # Συνολικό status
+        status_text = "📌 Places:\n" + (places_status if places_status else "No Places") + "\n\n" \
+                    "🔀 Transitions:\n" + (transitions_status if transitions_status else "No Transitions")
+
+        self.status_text.insert(tk.END, status_text)
+        self.status_text.config(state="disabled")
 
     def exit_app(self):
         """Εμφανίζει μήνυμα επιβεβαίωσης και κλείνει το πρόγραμμα"""
         if messagebox.askyesno("Έξοδος", "Σίγουρα θέλετε να κλείσετε το πρόγραμμα;"):
             self.root.destroy()  # Κλείνει το παράθυρο
-    
-    def visualize_petri_net(self):
-        """Καλεί τη μέθοδο οπτικοποίησης του Petri Net"""
-        self.pn.visualize()
+
+    def update_preview(self):
+        """Σχεδιάζει το mini preview του Petri Net"""
+        self.ax.clear()  # Καθαρισμός προηγούμενου διαγράμματος
+        G = nx.DiGraph()
+
+        # Προσθήκη κόμβων (Places & Transitions)
+        for place in self.pn.places.values():
+            G.add_node(place.name, label=f"{place.name}\n({place.tokens})", color="lightblue")
+
+        for transition in self.pn.transitions.values():
+            G.add_node(transition.name, label=transition.name, color="red")
+
+        # Προσθήκη ακμών
+        for transition in self.pn.transitions.values():
+            for place, tokens in transition.inputs.items():
+                G.add_edge(place.name, transition.name, label=f"-{tokens}->")
+            for place, tokens in transition.outputs.items():
+                G.add_edge(transition.name, place.name, label=f"-{tokens}->")
+
+        # Ανάκτηση labels και χρωμάτων
+        labels = nx.get_node_attributes(G, 'label')
+        colors = [G.nodes[n]['color'] for n in G.nodes]
+
+        # Σχεδίαση του mini preview
+        pos = nx.spring_layout(G)
+        nx.draw(G, pos, with_labels=True, labels=labels, node_color=colors, edge_color="black",
+                node_size=1000, font_size=8, font_weight="bold", ax=self.ax)
+
+        edge_labels = nx.get_edge_attributes(G, 'label')
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=6, font_color="black", ax=self.ax)
+
+        self.canvas.draw()  # Ανανεώνει το preview
 
 if __name__ == "__main__":
     root = tk.Tk()

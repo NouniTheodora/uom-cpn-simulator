@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from models.place import Place
 from models.transition import Transition
+from models.token_manager import TokenManager
 
 class PetriNet:
     def __init__(self, name: str):
@@ -26,16 +27,12 @@ class PetriNet:
         self.transitions[name] = Transition(name, inputs, outputs)
 
     def fire_transition(self, name: str):
-        """Εκτελεί μια μετάβαση αν είναι δυνατή."""
+        """Χρησιμοποιεί το TokenManager για να εκτελέσει τη μετάβαση"""
         if name not in self.transitions:
             raise ValueError(f"Η μετάβαση {name} δεν υπάρχει στο Petri Net!")
-        
+
         transition = self.transitions[name]
-        if transition.is_enabled():
-            transition.fire()
-            print(f"✔ Μετάβαση {name} εκτελέστηκε επιτυχώς.")
-        else:
-            print(f"❌ Η μετάβαση {name} δεν μπορεί να εκτελεστεί λόγω έλλειψης tokens.")
+        return TokenManager.fire_transition(transition)
 
     def show_state(self):
         """Εμφανίζει την τρέχουσα κατάσταση του Petri Net."""
