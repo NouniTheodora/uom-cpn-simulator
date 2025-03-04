@@ -68,6 +68,29 @@ class PetriNetGUI:
 
         messagebox.showinfo("Full Simulation", "Η πλήρης προσομοίωση ολοκληρώθηκε και τα tokens μετακινήθηκαν!")
 
+    def reset_all(self):
+        YELLOW = "\033[93m"
+        """Επαναφέρει το Petri Net στην αρχική του κατάσταση"""
+        self.pn = PetriNet("GUI Net")  # Δημιουργεί νέο Petri Net
+    
+        # Διαγράφουμε τα περιεχόμενα των panels
+        self.controls.frame.destroy()  
+        self.visualization.frame.destroy()
+        self.status_log.frame.destroy()
+
+        # Ξαναδημιουργούμε τα panels
+        self.controls = ControlsPanel(self.main_frame, self)
+        self.visualization = VisualizationPanel(self.main_frame, self.pn)
+        self.status_log = StatusLog(self.main_frame)
+
+        # Ενημερώνουμε το GUI
+        self.update_status()
+        self.update_preview()
+        print(f"{YELLOW}⚡ Το Petri Net επανήλθε στην αρχική του κατάσταση.")
+        # Προβολή μηνύματος επιτυχούς reset
+        self.root.after(100, lambda: messagebox.showinfo("Reset", "Το Petri Net επαναφέρθηκε στην αρχική του κατάσταση!"))
+
+
     def run_demo(self):
         """Δημιουργεί ένα προ-ορισμένο Petri Net για δοκιμή"""
         self.pn.add_place("P1", 3)
