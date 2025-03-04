@@ -20,6 +20,8 @@ class PetriNetGUI:
         self.visualization = VisualizationPanel(self.main_frame, self.pn)
         self.status_log = StatusLog(root)
 
+        self.log = []  # Η λίστα για την καταγραφή των βημάτων της προσομοίωσης
+
         self.update_status()
 
     def update_status(self, message=None, step=None):
@@ -49,24 +51,73 @@ class PetriNetGUI:
         self.update_preview()
 
     def run_full_simulation(self):
-        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens"""
+        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens με λεπτομέρειες"""
+        self.log = []  # Αρχικοποίηση λίστας για αποθήκευση των βημάτων
+
         # Ενημέρωση για την αρχική κατάσταση
-        self.update_status()
+        self.update_status("Starting Full Simulation")
+        self.log.append("Starting Full Simulation")
 
-        # Εκτέλεση όλων των μεταβάσεων
-        transitions = list(self.pn.transitions.keys())  # Λαμβάνουμε όλα τα transitions
-
-        # Κίνηση των tokens με κάθε μετάβαση
+        transitions = list(self.pn.transitions.keys())  # Λήψη όλων των transitions
+        
         for step, transition_name in enumerate(transitions, 1):
-            self.update_status(f"Executing Transition: {transition_name}", step)
+            log_entry = f"Step {step}: Executing Transition {transition_name}"
+            self.log.append(log_entry)  # Αποθήκευση στο log
+            self.update_status(log_entry, step)
+
             self.pn.fire_transition(transition_name)  # Εκτέλεση της μετάβασης
-            self.update_preview()  # Ενημέρωση του διαγράμματος μετά από κάθε μετάβαση
-            time.sleep(1)  # Μικρή καθυστέρηση για να δείξουμε την κίνηση των tokens
+            self.update_preview()  # Ενημέρωση του διαγράμματος
+            time.sleep(1)  # Καθυστέρηση για οπτικοποίηση
 
-        # Ενημέρωση για την τελική κατάσταση
-        self.update_status()
+        self.update_status("Simulation Completed")
+        self.log.append("Simulation Completed")
 
-        messagebox.showinfo("Full Simulation", "Η πλήρης προσομοίωση ολοκληρώθηκε και τα tokens μετακινήθηκαν!")
+        messagebox.showinfo("Full Simulation", "Η προσομοίωση ολοκληρώθηκε!")
+        self.show_log_window()  # Εμφάνιση του ιστορικού
+
+    def show_log_window(self):
+        """Εμφανίζει ένα παράθυρο με όλα τα βήματα της προσομοίωσης σε μορφή λίστας."""
+        log_window = tk.Toplevel(self.root)
+        log_window.title("Simulation Log")
+        log_window.geometry("600x400")
+
+        # Frame για styling
+        frame = tk.Frame(log_window, bg="#2c3e50")
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Προσθήκη τίτλου
+        title_label = tk.Label(frame, text="📜 Simulation Log", font=("Arial", 14, "bold"), fg="white", bg="#2c3e50")
+        title_label.pack(pady=5)
+
+        # Προσθήκη `Text` widget με scrollbar
+        text_area = tk.Text(frame, wrap="word", width=70, height=20, font=("Courier", 11), bg="#ecf0f1", fg="black")
+        text_area.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+
+        scrollbar = tk.Scrollbar(text_area)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_area.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=text_area.yview)
+
+        # Εισαγωγή των logs με styling
+        for step, log_entry in enumerate(self.log, 1):
+            if "Executing Transition" in log_entry:
+                text_area.insert(tk.END, f"🔹 {log_entry}\n", "transition")
+            elif "Simulation Completed" in log_entry:
+                text_area.insert(tk.END, f"✅ {log_entry}\n", "completed")
+            else:
+                text_area.insert(tk.END, f"{log_entry}\n")
+
+        # Ορισμός χρώματος για τα διαφορετικά στάδια
+        text_area.tag_config("transition", foreground="blue", font=("Courier", 11, "bold"))
+        text_area.tag_config("completed", foreground="green", font=("Courier", 12, "bold"))
+
+        text_area.config(state=tk.DISABLED)  # Απενεργοποίηση επεξεργασίας
+
+        # Κουμπί κλεισίματος
+        close_button = tk.Button(frame, text="Close", command=log_window.destroy, font=("Arial", 12), bg="#e74c3c", fg="white")
+        close_button.pack(pady=5)
+
+
 
     def reset_all(self):
         YELLOW = "\033[93m"
