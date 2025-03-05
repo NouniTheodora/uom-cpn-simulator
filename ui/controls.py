@@ -82,3 +82,5 @@ class ControlsPanel:
     
     def reset(self):
         print('I AM GOING TO RESET ALL')
+        self.gui.reset_all()
+        
