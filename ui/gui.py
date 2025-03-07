@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from ui.controls import ControlsPanel
 from ui.visualization import VisualizationPanel
 from ui.status_log import StatusLog
@@ -11,9 +12,9 @@ class PetriNetGUI:
         self.root = root
         self.root.title("Petri Net Simulator")
         self.root.geometry("1000x1000")
-        self.pn = PetriNet("GUI Net")
+        self.pn = PetriNet("GUI Net",self)
 
-        self.main_frame = tk.Frame(root)
+        self.main_frame = ttk.Frame(root,padding="10")
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.controls = ControlsPanel(self.main_frame, self)
@@ -21,6 +22,24 @@ class PetriNetGUI:
         self.status_log = StatusLog(root)
 
         self.log = []  # Η λίστα για την καταγραφή των βημάτων της προσομοίωσης
+        # 🔹 Frame για το Log Output
+        self.log_frame = ttk.LabelFrame(self.main_frame, text="Simulation Log", padding=5)
+        self.log_frame.pack(fill="both", expand=True, pady=10)
+
+        # 🔹 Text Widget για logs (με Scrolling)
+        self.log_text = tk.Text(self.log_frame, height=10, width=100, bg="#f4f4f4", fg="black", font=("Arial", 10))
+        self.log_text.pack(side="left", fill="both", expand=True)
+
+        self.scrollbar = ttk.Scrollbar(self.log_frame, command=self.log_text.yview)
+        self.scrollbar.pack(side="right", fill="y")
+        self.log_text.config(yscrollcommand=self.scrollbar.set, state=tk.DISABLED)
+
+        # 🔹 Progress Bar
+        self.progress = ttk.Progressbar(self.main_frame, orient="horizontal", length=300, mode="determinate")
+        self.progress.pack(pady=10)
+
+        self.log_text = tk.Text(self.main_frame, height=10, width=100, state=tk.DISABLED)
+        self.log_text.pack(pady=5)
 
         self.update_status()
 
@@ -34,6 +53,16 @@ class PetriNetGUI:
 
     def update_preview(self):
         self.visualization.update_preview()
+
+    def log_message(self, message):
+        """Εμφανίζει το μήνυμα στο terminal και στο Text widget του GUI"""
+        print(message)  # Εμφάνιση στο terminal
+    
+        # Ενεργοποιούμε προσωρινά το Text widget για να γράψουμε
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.insert(tk.END, message + "\n")
+        self.log_text.yview(tk.END)  # Κάνει scroll στο τέλος του κειμένου
+        self.log_text.config(state=tk.DISABLED)
 
     def add_place(self, name, tokens):
         self.pn.add_place(name, tokens)
@@ -106,21 +135,21 @@ class PetriNetGUI:
         return "🔄 Token Changes: " + ", ".join(changes) if changes else "No changes in tokens"
  
     def show_log_window(self):
-        """Εμφανίζει ένα παράθυρο με όλα τα βήματα της προσομοίωσης, μαζί με τα tokens στις θέσεις."""
+        """Εμφανίζει το παράθυρο Simulation Log με όλα τα μηνύματα."""
         log_window = tk.Toplevel(self.root)
         log_window.title("Simulation Log")
         log_window.geometry("650x450")
 
-        # Frame για styling
-        frame = tk.Frame(log_window, bg="#2c3e50")
+        frame = tk.Frame(log_window, bg="black", padx=5, pady=5)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Προσθήκη τίτλου
-        title_label = tk.Label(frame, text="📜 Simulation Log", font=("Arial", 14, "bold"), fg="white", bg="#2c3e50")
+        inner_frame = tk.Frame(frame, bg="white")
+        inner_frame.pack(fill="both", expand=True, padx=3, pady=3)
+
+        title_label = tk.Label(inner_frame, text="📜 Simulation Log", font=("Arial", 14, "bold"), fg="black", bg="white")
         title_label.pack(pady=5)
 
-        # Προσθήκη `Text` widget με scrollbar
-        text_area = tk.Text(frame, wrap="word", width=80, height=22, font=("Courier", 11), bg="#ecf0f1", fg="black")
+        text_area = tk.Text(inner_frame, wrap="word", width=80, height=22, font=("Courier", 11), bg="white", fg="black", borderwidth=0)
         text_area.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
 
         scrollbar = tk.Scrollbar(text_area)
@@ -128,26 +157,14 @@ class PetriNetGUI:
         text_area.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=text_area.yview)
 
-        # Εισαγωγή των logs με styling
-        for step, log_entry in enumerate(self.log, 1):
-            if "Executing Transition" in log_entry:
-                text_area.insert(tk.END, f"🔹 {log_entry}\n", "transition")
-            elif "Simulation Completed" in log_entry:
-                text_area.insert(tk.END, f"✅ {log_entry}\n", "completed")
-            else:
-                text_area.insert(tk.END, f"{log_entry}\n", "tokens")
-
-        # Ορισμός χρώματος για τα διαφορετικά στάδια
-        text_area.tag_config("transition", foreground="blue", font=("Courier", 11, "bold"))
-        text_area.tag_config("completed", foreground="green", font=("Courier", 12, "bold"))
-        text_area.tag_config("tokens", foreground="black", font=("Courier", 10))
+        # ✅ Εμφάνιση ΟΛΩΝ των logs από το Terminal στο Log Window
+        for log_entry in self.log:
+            text_area.insert(tk.END, f"{log_entry}\n")
 
         text_area.config(state=tk.DISABLED)  # Απενεργοποίηση επεξεργασίας
 
-        # Κουμπί κλεισίματος
-        close_button = tk.Button(frame, text="Close", command=log_window.destroy, font=("Arial", 12), bg="#e74c3c", fg="white")
+        close_button = tk.Button(inner_frame, text="Close", command=log_window.destroy, font=("Arial", 12), bg="red", fg="white")
         close_button.pack(pady=5)
-
 
     def reset_all(self):
         YELLOW = "\033[93m"

@@ -9,50 +9,81 @@ from models.token_manager import TokenManager
 
 class PetriNet:
     
-    def __init__(self, name: str):
+    
+    def __init__(self, name,gui):
         self.name = name
+        self.gui=gui
         self.places = {}
         self.transitions = {}
 
     def run_full_simulation(self):
-        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens με λεπτομέρειες"""
+        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens με visualization"""
         self.log = []  # Αρχικοποίηση λίστας για αποθήκευση των βημάτων
 
-        # Ενημέρωση για την αρχική κατάσταση
-        self.update_status("Starting Full Simulation")
-        self.log.append("Starting Full Simulation")
+        # Δημιουργία νέου παραθύρου για το simulation
+        self.simulation_window = tk.Toplevel(self.root)
+        self.simulation_window.title("Petri Net Simulation")
+        self.simulation_window.geometry("800x600")
 
-        # Καταγραφή αρχικής κατάστασης των θέσεων
+        #Προσθήκη του Visualization Panel στο νέο παράθυρο
+        self.simulation_visualization = VisualizationPanel(self.simulation_window, self.pn)
+
+        # Ενημέρωση για την αρχική κατάσταση
+        self.log_message("🚀 Starting Full Simulation")
+        self.log.append("🚀 Starting Full Simulation")
+
+        #Καταγραφή αρχικής κατάστασης των θέσεων
         self.log.append(self.get_places_status())
 
         transitions = list(self.pn.transitions.keys())  # Λήψη όλων των transitions
-        
-        for step, transition_name in enumerate(transitions, 1):
-            # 1️⃣ Αποθήκευση αρχικής κατάστασης των tokens
-            initial_state = self.pn.places.copy()
 
-            log_entry = f"🔹 Step {step}: Executing Transition {transition_name}"
-            self.log.append(log_entry)  # Αποθήκευση στο log
-            self.update_status(log_entry, step)
+        # Εκκίνηση της προσομοίωσης χωρίς να παγώνει το UI
+        self.run_simulation_step(0, transitions)
 
-            # 2️⃣ Εκτέλεση της μετάβασης
-            self.pn.fire_transition(transition_name)  
-            self.update_preview()  # Ενημέρωση του διαγράμματος
+    def run_simulation_step(self, step, transitions):
+        """Εκτελεί μία μετάβαση τη φορά με χρήση του after() για ομαλή ανανέωση του UI"""
+        if step >= len(transitions):
+            # Τέλος της προσομοίωσης
+            final_status=self.get_places_status()
+            self.log.append(final_status)
+            self.log_message(final_status)
 
-            # 3️⃣ Αποθήκευση νέας κατάστασης των tokens
-            final_state = self.pn.places.copy()
+            self.log_message("✅ Simulation Completed")
+            self.log.append("✅ Simulation Completed")
+            self.show_log_window()  # Εμφάνιση του ιστορικού
+            messagebox.showinfo("Full Simulation", "Η προσομοίωση ολοκληρώθηκε!")
+            return
 
-            # 4️⃣ Υπολογισμός αλλαγών στα tokens
-            token_changes = self.get_token_changes(initial_state, final_state)
-            self.log.append(token_changes)
+        transition_name = transitions[step]
 
-            time.sleep(1)  # Καθυστέρηση για οπτικοποίηση
+        # 1️⃣ Αποθήκευση αρχικής κατάστασης των tokens
+        initial_state = self.pn.places.copy()
+        print(initial_state)
+        self.log.append(initial_state)  
 
-        self.update_status("✅ Simulation Completed")
-        self.log.append("✅ Simulation Completed")
+        log_entry = f"🔹 Step {step + 1}: Executing Transition {transition_name}"
+        self.log.append(log_entry)
+        self.log_message(log_entry)
 
-        messagebox.showinfo("Full Simulation", "Η προσομοίωση ολοκληρώθηκε!")
-        self.show_log_window()  # Εμφάνιση του ιστορικού
+        # 2️⃣ Εκτέλεση της μετάβασης
+        self.pn.fire_transition(transition_name)
+
+        # 3️⃣ Αποθήκευση νέας κατάστασης των tokens
+        final_state = f"After Transition {transition_name}: { {p: self.pn.places[p].tokens for p in self.pn.places} }"
+        print(final_state)
+        self.log.append(final_state)
+
+        # 4️⃣ Υπολογισμός αλλαγών στα tokens
+        token_changes = self.get_token_changes(initial_state, final_state)
+        self.log.append(token_changes)
+        self.log_message(token_changes)
+
+        self.update_preview()  # Ενημέρωση του διαγράμματος
+        self.root.updateidletasks()  # Ανανέωση του UI
+
+        # 6️⃣ Καλούμε την επόμενη μετάβαση μετά από 1000ms (1 δευτερόλεπτο)
+        self.root.after(1000, self.run_simulation_step, step + 1, transitions)
+
 
     def add_place(self, name: str, tokens: int = 0):
         """Προσθέτει έναν νέο κόμβο (Place) στο δίκτυο."""
@@ -73,31 +104,42 @@ class PetriNet:
     def fire_transition(self, transition_name):
         """Εκτελεί μια μετάβαση αν είναι ενεργοποιήσιμη."""
         if transition_name not in self.transitions:
-            print(f"❌ Transition {transition_name} does not exist!")
+            self.gui.log_message(f"❌ Transition {transition_name} does not exist!")
             return
 
         transition = self.transitions[transition_name]
 
-        if not hasattr(transition, 'inputs') or not hasattr(transition, 'outputs'):
-            print(f"❌ Transition {transition_name} is missing inputs/outputs attributes.")
-            return
+        # 🔍 Εκτύπωση της κατάστασης των θέσεων πριν την εκτέλεση
+        self.gui.log_message(f"🔍 Before Transition {transition_name}: { {p: self.places[p].tokens for p in self.places} }")
 
         # 1️⃣ Έλεγχος αν υπάρχουν αρκετά tokens στις εισόδους
-        for place, required_tokens in transition.inputs.items():
-            if self.places.get(place, 0) < required_tokens:
-                print(f"⚠️ Not enough tokens in {place} to fire {transition_name}")
+        for place_obj, required_tokens in transition.inputs.items():
+            place_name = place_obj if isinstance(place_obj, str) else place_obj.name  # Βεβαιωνόμαστε ότι είναι string
+            available_tokens = self.places[place_name].tokens  # Παίρνουμε το attribute `tokens`
+        
+            self.gui.log_message(f"🔍 Checking {place_name}: Needs {required_tokens}, Available {available_tokens}")
+            if available_tokens < required_tokens:
+                self.gui.log_message(f"⚠️ Not enough tokens in {place_name}: {available_tokens} tokens to fire {transition_name}")
                 return
 
         # 2️⃣ Αφαίρεση tokens από τις εισόδους
-        for place, required_tokens in transition.inputs.items():
-            self.places[place] -= required_tokens
+        for place_obj, required_tokens in transition.inputs.items():
+            place_name = place_obj if isinstance(place_obj, str) else place_obj.name
+            self.places[place_name].tokens -= required_tokens  
 
         # 3️⃣ Προσθήκη tokens στις εξόδους
-        for place, tokens_to_add in transition.outputs.items():
-            self.places[place] = self.places.get(place, 0) + tokens_to_add
+        for place_obj, tokens_to_add in transition.outputs.items():
+            place_name = place_obj if isinstance(place_obj, str) else place_obj.name
 
-        print(f"✅ Transition {transition_name} fired successfully!")
+            if place_name in self.places:
+                self.places[place_name].tokens += tokens_to_add
+            else:
+                self.places[place_name] = Place(place_name, tokens_to_add)  # Δημιουργία νέας θέσης αν δεν υπάρχει
 
+        # 🔍 Εκτύπωση της κατάστασης των θέσεων μετά την εκτέλεση
+        self.gui.log_message(f"✅ After Transition {transition_name}: { {p: self.places[p].tokens for p in self.places} }")
+
+        self.gui.log_message(f"✅ Transition {transition_name} fired successfully!")
 
     def show_state(self):
         """Εμφανίζει την τρέχουσα κατάσταση του Petri Net."""
@@ -157,3 +199,5 @@ class PetriNet:
 
     def __str__(self):
         return f"Petri Net ({self.name})"
+    
+    
