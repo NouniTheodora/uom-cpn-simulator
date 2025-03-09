@@ -8,6 +8,7 @@ from tkinter import messagebox
 import time
 
 class PetriNetGUI:
+    MAX_PLACES = 20  # Μέγιστος αριθμός θέσεων
     def __init__(self, root):
         self.root = root
         self.root.title("Petri Net Simulator")
@@ -41,7 +42,14 @@ class PetriNetGUI:
         self.log_text = tk.Text(self.main_frame, height=10, width=100, state=tk.DISABLED)
         self.log_text.pack(pady=5)
 
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.insert(tk.END, "Simulation Log Ready...\n")
+        self.log_text.config(state=tk.DISABLED)
+
+
         self.update_status()
+        
+
 
     def update_status(self, message=None, step=None):
         """Ενημερώνει το StatusLog με την τρέχουσα κατάσταση του Petri Net"""
@@ -65,6 +73,10 @@ class PetriNetGUI:
         self.log_text.config(state=tk.DISABLED)
 
     def add_place(self, name, tokens):
+        if len(self.pn.places) >= self.MAX_PLACES:
+            print("❌ Δεν μπορεί να προστεθεί άλλη θέση! Έχει επιτευχθεί το μέγιστο όριο των 20 θέσεων.")
+            messagebox.showwarning("Όριο Θέσεων", "Δεν μπορεί να προστεθεί άλλη θέση! Έχει επιτευχθεί το μέγιστο όριο των 20 θέσεων.")
+            return
         self.pn.add_place(name, tokens)
         self.update_status()
         self.update_preview()
@@ -80,12 +92,12 @@ class PetriNetGUI:
         self.update_preview()
 
     def run_full_simulation(self):
-        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens με λεπτομέρειες"""
+        """Τρέχει όλες τις μεταβάσεις και εμφανίζει την κίνηση των tokens με απλή καταγραφή"""
         self.log = []  # Αρχικοποίηση λίστας για αποθήκευση των βημάτων
 
         # Ενημέρωση για την αρχική κατάσταση
-        self.update_status("Starting Full Simulation")
-        self.log.append("Starting Full Simulation")
+        self.update_status("▶️ Starting Full Simulation")
+        self.log.append("▶️ Starting Full Simulation")
 
         # Καταγραφή αρχικής κατάστασης των θέσεων
         self.log.append(self.get_places_status())
@@ -93,23 +105,15 @@ class PetriNetGUI:
         transitions = list(self.pn.transitions.keys())  # Λήψη όλων των transitions
         
         for step, transition_name in enumerate(transitions, 1):
-            # 1️⃣ Αποθήκευση αρχικής κατάστασης των tokens
-            initial_state = self.pn.places.copy()
-
             log_entry = f"🔹 Step {step}: Executing Transition {transition_name}"
             self.log.append(log_entry)  # Αποθήκευση στο log
             self.update_status(log_entry, step)
-
-            # 2️⃣ Εκτέλεση της μετάβασης
-            self.pn.fire_transition(transition_name)  
-            self.update_preview()  # Ενημέρωση του διαγράμματος
-
-            # 3️⃣ Αποθήκευση νέας κατάστασης των tokens
-            final_state = self.pn.places.copy()
-
-            # 4️⃣ Υπολογισμός αλλαγών στα tokens
-            token_changes = self.get_token_changes(initial_state, final_state)
-            self.log.append(token_changes)
+            success = self.pn.fire_transition(transition_name)  
+            self.update_preview()
+            
+            if not success:
+                self.log.append(f"❌ Transition {transition_name} could not be fired.")
+                break
 
             time.sleep(1)  # Καθυστέρηση για οπτικοποίηση
 
@@ -117,7 +121,7 @@ class PetriNetGUI:
         self.log.append("✅ Simulation Completed")
 
         messagebox.showinfo("Full Simulation", "Η προσομοίωση ολοκληρώθηκε!")
-        self.show_log_window()  # Εμφάνιση του ιστορικού
+        self.root.after(100, self.show_log_window) 
 
     def get_token_changes(self, initial_state, final_state):
         """Υπολογίζει ποια tokens προστέθηκαν ή αφαιρέθηκαν σε κάθε θέση."""
@@ -135,59 +139,56 @@ class PetriNetGUI:
         return "🔄 Token Changes: " + ", ".join(changes) if changes else "No changes in tokens"
  
     def show_log_window(self):
-        """Εμφανίζει το παράθυρο Simulation Log με όλα τα μηνύματα."""
+        """Εμφανίζει το παράθυρο Simulation Log με τα καταγεγραμμένα μηνύματα"""
         log_window = tk.Toplevel(self.root)
         log_window.title("Simulation Log")
         log_window.geometry("650x450")
 
-        frame = tk.Frame(log_window, bg="black", padx=5, pady=5)
+        frame = tk.Frame(log_window)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        inner_frame = tk.Frame(frame, bg="white")
-        inner_frame.pack(fill="both", expand=True, padx=3, pady=3)
+        self.text_area = tk.Text(frame, wrap="word", width=80, height=22, font=("Courier", 11), bg="white", fg="black", borderwidth=0)
+        self.text_area.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
 
-        title_label = tk.Label(inner_frame, text="📜 Simulation Log", font=("Arial", 14, "bold"), fg="black", bg="white")
-        title_label.pack(pady=5)
-
-        text_area = tk.Text(inner_frame, wrap="word", width=80, height=22, font=("Courier", 11), bg="white", fg="black", borderwidth=0)
-        text_area.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
-
-        scrollbar = tk.Scrollbar(text_area)
+        scrollbar = tk.Scrollbar(frame, command=self.text_area.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        text_area.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=text_area.yview)
+        self.text_area.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=self.text_area.yview)
 
-        # ✅ Εμφάνιση ΟΛΩΝ των logs από το Terminal στο Log Window
-        for log_entry in self.log:
-            text_area.insert(tk.END, f"{log_entry}\n")
+        # ✅ Αν η `self.log` είναι κενή, εμφανίζουμε μήνυμα
+        if not self.log:
+            text_area.insert(tk.END, "⚠️ No logs available.\n")
+        else:
+            # ✅ Εμφάνιση όλων των logs στο Text Widget
+            for log_entry in self.log:
+                self.text_area.insert(tk.END, f"{log_entry}\n")
 
-        text_area.config(state=tk.DISABLED)  # Απενεργοποίηση επεξεργασίας
+        self.text_area.config(state=tk.DISABLED)  # Απενεργοποίηση επεξεργασίας
 
-        close_button = tk.Button(inner_frame, text="Close", command=log_window.destroy, font=("Arial", 12), bg="red", fg="white")
+        close_button = tk.Button(frame, text="Close", command=log_window.destroy, font=("Arial", 12))
         close_button.pack(pady=5)
 
+
+
     def reset_all(self):
-        YELLOW = "\033[93m"
-        """Επαναφέρει το Petri Net στην αρχική του κατάσταση"""
-        self.pn = PetriNet("GUI Net")  # Δημιουργεί νέο Petri Net
-    
-        # Διαγράφουμε τα περιεχόμενα των panels
-        self.controls.frame.destroy()  
-        self.visualization.frame.destroy()
-        self.status_log.frame.destroy()
-
-        # Ξαναδημιουργούμε τα panels
-        self.controls = ControlsPanel(self.main_frame, self)
-        self.visualization = VisualizationPanel(self.main_frame, self.pn)
-        self.status_log = StatusLog(self.main_frame)
-
-        # Ενημερώνουμε το GUI
+        """Επαναφέρει το Petri Net στην αρχική του κατάσταση και ανανεώνει το UI"""
+        print("\n🔄 [RESET] Ξεκινά η επαναφορά του Petri Net...")
+        print("=" * 70)
+        
+        # Διαγραφή όλων των θέσεων και μεταβάσεων
+        self.pn.places.clear()
+        self.pn.transitions.clear()
+        
+        
+        print("✔ Όλες οι θέσεις και οι μεταβάσεις διαγράφηκαν επιτυχώς.")
+        
         self.update_status()
         self.update_preview()
-        print(f"{YELLOW}⚡ Το Petri Net επανήλθε στην αρχική του κατάσταση.")
-        # Προβολή μηνύματος επιτυχούς reset
+        
+        print("⚡ Το Petri Net επανήλθε στην αρχική του κατάσταση.")
+        print("=" * 70)
+        
         self.root.after(100, lambda: messagebox.showinfo("Reset", "Το Petri Net επαναφέρθηκε στην αρχική του κατάσταση!"))
-
 
     def get_places_status(self):
         """Επιστρέφει την τρέχουσα κατάσταση όλων των θέσεων και των tokens τους."""

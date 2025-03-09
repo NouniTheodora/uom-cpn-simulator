@@ -41,10 +41,11 @@ class PetriNet:
         self.run_simulation_step(0, transitions)
 
     def run_simulation_step(self, step, transitions):
+        
         """Εκτελεί μία μετάβαση τη φορά με χρήση του after() για ομαλή ανανέωση του UI"""
         if step >= len(transitions):
-            # Τέλος της προσομοίωσης
-            final_status=self.get_places_status()
+             # Τέλος της προσομοίωσης
+            final_status = self.get_places_status()
             self.log.append(final_status)
             self.log_message(final_status)
 
@@ -57,9 +58,7 @@ class PetriNet:
         transition_name = transitions[step]
 
         # 1️⃣ Αποθήκευση αρχικής κατάστασης των tokens
-        initial_state = self.pn.places.copy()
-        print(initial_state)
-        self.log.append(initial_state)  
+        initial_state = {p: self.pn.places[p].tokens for p in self.pn.places}
 
         log_entry = f"🔹 Step {step + 1}: Executing Transition {transition_name}"
         self.log.append(log_entry)
@@ -69,9 +68,7 @@ class PetriNet:
         self.pn.fire_transition(transition_name)
 
         # 3️⃣ Αποθήκευση νέας κατάστασης των tokens
-        final_state = f"After Transition {transition_name}: { {p: self.pn.places[p].tokens for p in self.pn.places} }"
-        print(final_state)
-        self.log.append(final_state)
+        final_state = {p: self.pn.places[p].tokens for p in self.pn.places}
 
         # 4️⃣ Υπολογισμός αλλαγών στα tokens
         token_changes = self.get_token_changes(initial_state, final_state)
@@ -79,10 +76,11 @@ class PetriNet:
         self.log_message(token_changes)
 
         self.update_preview()  # Ενημέρωση του διαγράμματος
-        self.root.updateidletasks()  # Ανανέωση του UI
+        self.root.update_idletasks()  # Ανανέωση του UI
 
         # 6️⃣ Καλούμε την επόμενη μετάβαση μετά από 1000ms (1 δευτερόλεπτο)
         self.root.after(1000, self.run_simulation_step, step + 1, transitions)
+
 
 
     def add_place(self, name: str, tokens: int = 0):
@@ -97,9 +95,26 @@ class PetriNet:
         :param input_places: Λεξικό {place_name: απαιτούμενα tokens}
         :param output_places: Λεξικό {place_name: tokens που προστίθενται}
         """
-        inputs = {self.places[p]: tokens for p, tokens in input_places.items()}
-        outputs = {self.places[p]: tokens for p, tokens in output_places.items()}
+        inputs = {}
+        outputs = {}
+
+        # Επεξεργασία των εισόδων
+        for place_name, tokens in input_places.items():
+            if place_name in self.places:
+                inputs[self.places[place_name]] = tokens
+            else:
+                print(f"⚠️ Warning: Το place '{place_name}' δεν υπάρχει. Η μετάβαση {name} δε θα λειτουργήσει σωστά.")
+
+        # Επεξεργασία των εξόδων
+        for place_name, tokens in output_places.items():
+            if place_name not in self.places:
+                # Αν δεν υπάρχει η θέση, τη δημιουργούμε αυτόματα με 0 tokens
+                self.places[place_name] = Place(place_name, 0)
+            outputs[self.places[place_name]] = tokens
+
+        # Προσθήκη της μετάβασης
         self.transitions[name] = Transition(name, inputs, outputs)
+        print(f"✅ Μετάβαση {name} προστέθηκε: Inputs {input_places}, Outputs {output_places}")
 
     def fire_transition(self, transition_name):
         """Εκτελεί μια μετάβαση αν είναι ενεργοποιήσιμη."""
@@ -114,27 +129,28 @@ class PetriNet:
 
         # 1️⃣ Έλεγχος αν υπάρχουν αρκετά tokens στις εισόδους
         for place_obj, required_tokens in transition.inputs.items():
-            place_name = place_obj if isinstance(place_obj, str) else place_obj.name  # Βεβαιωνόμαστε ότι είναι string
-            available_tokens = self.places[place_name].tokens  # Παίρνουμε το attribute `tokens`
-        
+            place_name = place_obj.name
+            available_tokens = self.places[place_name].tokens
             self.gui.log_message(f"🔍 Checking {place_name}: Needs {required_tokens}, Available {available_tokens}")
+
             if available_tokens < required_tokens:
                 self.gui.log_message(f"⚠️ Not enough tokens in {place_name}: {available_tokens} tokens to fire {transition_name}")
                 return
 
+
         # 2️⃣ Αφαίρεση tokens από τις εισόδους
         for place_obj, required_tokens in transition.inputs.items():
-            place_name = place_obj if isinstance(place_obj, str) else place_obj.name
-            self.places[place_name].tokens -= required_tokens  
+            place_name = place_obj.name
+            self.places[place_name].tokens -= required_tokens
 
         # 3️⃣ Προσθήκη tokens στις εξόδους
         for place_obj, tokens_to_add in transition.outputs.items():
-            place_name = place_obj if isinstance(place_obj, str) else place_obj.name
+            place_name = place_obj.name
+            if place_name not in self.places:
+                self.places[place_name] = Place(place_name, 0)  # Αν η θέση δεν υπάρχει, τη δημιουργούμε
 
-            if place_name in self.places:
-                self.places[place_name].tokens += tokens_to_add
-            else:
-                self.places[place_name] = Place(place_name, tokens_to_add)  # Δημιουργία νέας θέσης αν δεν υπάρχει
+            self.places[place_name].tokens += tokens_to_add  # ✅ Τώρα τα tokens προστίθενται σωστά!
+
 
         # 🔍 Εκτύπωση της κατάστασης των θέσεων μετά την εκτέλεση
         self.gui.log_message(f"✅ After Transition {transition_name}: { {p: self.places[p].tokens for p in self.places} }")
@@ -200,4 +216,11 @@ class PetriNet:
     def __str__(self):
         return f"Petri Net ({self.name})"
     
+    def log_message(self, message):
+        """Στέλνει εμφανή μηνύματα στο GUI και στο terminal."""
+        formatted_message = f"\n🚀 [Petri Net] {message}\n{'='*50}"
+        if self.gui:
+            self.gui.update_status(message)
+            print(formatted_message)
+
     
