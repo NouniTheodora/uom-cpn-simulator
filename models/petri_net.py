@@ -120,7 +120,7 @@ class PetriNet:
         """Εκτελεί μια μετάβαση αν είναι ενεργοποιήσιμη."""
         if transition_name not in self.transitions:
             self.gui.log_message(f"❌ Transition {transition_name} does not exist!")
-            return
+            return False
 
         transition = self.transitions[transition_name]
 
@@ -135,7 +135,7 @@ class PetriNet:
 
             if available_tokens < required_tokens:
                 self.gui.log_message(f"⚠️ Not enough tokens in {place_name}: {available_tokens} tokens to fire {transition_name}")
-                return
+                return False
 
 
         # 2️⃣ Αφαίρεση tokens από τις εισόδους
@@ -148,7 +148,6 @@ class PetriNet:
             place_name = place_obj.name
             if place_name not in self.places:
                 self.places[place_name] = Place(place_name, 0)  # Αν η θέση δεν υπάρχει, τη δημιουργούμε
-
             self.places[place_name].tokens += tokens_to_add  # ✅ Τώρα τα tokens προστίθενται σωστά!
 
 
@@ -156,6 +155,7 @@ class PetriNet:
         self.gui.log_message(f"✅ After Transition {transition_name}: { {p: self.places[p].tokens for p in self.places} }")
 
         self.gui.log_message(f"✅ Transition {transition_name} fired successfully!")
+        return True
 
     def show_state(self):
         """Εμφανίζει την τρέχουσα κατάσταση του Petri Net."""
@@ -220,7 +220,7 @@ class PetriNet:
         """Στέλνει εμφανή μηνύματα στο GUI και στο terminal."""
         formatted_message = f"\n🚀 [Petri Net] {message}\n{'='*50}"
         if self.gui:
-            self.gui.update_status(message)
-            print(formatted_message)
+            self.gui.status_log.update_status(message)
+            print(f"\n🚀 [Petri Net] {message}\n{'='*50}")  # Send to Terminal
 
     
