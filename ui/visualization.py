@@ -21,7 +21,6 @@ class VisualizationPanel:
         self.update_preview()
 
     def update_preview(self):
-        """Ενημερώνει το mini preview του Petri Net"""
         self.ax.clear()
 
         G = nx.DiGraph()

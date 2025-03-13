@@ -21,18 +21,13 @@ class ControlsPanel:
         self.add_trans_btn = tk.Button(self.frame, text="Add Transition", command=self.add_transition)
         self.add_trans_btn.pack(pady=5)
 
-        tk.Label(self.frame, text="Fire Transition").pack()
-        self.fire_trans_entry = self.create_entry(self.frame, "Transition Name")
-        self.fire_trans_btn = tk.Button(self.frame, text="Fire Transition", command=self.fire_transition)
-        self.fire_trans_btn.pack(pady=5)
-
-        self.demo_btn = tk.Button(self.frame, text="Demo Petri Net", command=self.gui.run_demo)
-        self.demo_btn.pack(pady=10)
-
         self.run_full_simulation_button = tk.Button(self.frame, text="Run Full Simulation", command=self.gui.run_full_simulation)
         self.run_full_simulation_button.pack(pady=10)
 
         self.demo_btn = tk.Button(self.frame, text="Reset ALL", command=self.reset)
+        self.demo_btn.pack(pady=10)
+
+        self.demo_btn = tk.Button(self.frame, text="Simulation of a demo Petri Net", command=self.gui.run_demo)
         self.demo_btn.pack(pady=10)
 
     def create_entry(self, parent, placeholder):
@@ -46,7 +41,7 @@ class ControlsPanel:
 
     def clear_placeholder(self, event, entry, placeholder):
         """Clear the placeholder when the field is focused"""
-        if entry.get() == placeholder:  # If placeholder is there
+        if entry.get() == placeholder: 
             entry.delete(0, tk.END)
 
     def add_placeholder(self, event, entry, placeholder):
@@ -68,10 +63,6 @@ class ControlsPanel:
         outputs = self.parse_places(self.trans_outputs_entry.get())
         self.gui.add_transition(name, inputs, outputs)
 
-    def fire_transition(self):
-        name = self.fire_trans_entry.get()
-        self.gui.fire_transition(name)
-
     def parse_places(self, text):
         places = {}
         for item in text.split(","):
@@ -81,6 +72,5 @@ class ControlsPanel:
         return places
     
     def reset(self):
-        print('I AM GOING TO RESET ALL')
         self.gui.reset_all()
         
